@@ -1,0 +1,47 @@
+---
+- name: Create application user with sudo privileges
+  hosts: external_hosts
+  become: yes
+  vars:
+    ansible_user: root
+    app_user: appuser
+    ssh_public_key: "{{ lookup('file', '~/.ssh/bitlaunch.pub') }}"
+
+  tasks:
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        groups: sudo
+        shell: /bin/bash
+        create_home: yes
+        state: present
+
+    - name: Set up authorized keys for the application user
+      authorized_key:
+        user: "{{ app_user }}"
+        key: "{{ ssh_public_key }}"
+        state: present
+      when: not ansible_check_mode
+
+    - name: Ensure sudo group has passwordless sudo
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%sudo'
+        line: '%sudo ALL=(ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    - name: Disable password authentication for SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+      notify: Restart SSH
+
+  handlers:
+    - name: Restart SSH
+      service:
+        name: sshd
+        state: restarted
+      when: not ansible_check_mode

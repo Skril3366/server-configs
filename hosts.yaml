@@ -1,0 +1,17 @@
+external_hosts:
+  vars:
+    ansible_user: root
+  hosts:
+    frankfurt:
+      ansible_host: 170.187.185.141
+    amsterdam:
+      ansible_host: 193.149.129.84
+
+tailscale:
+  vars:
+    ansible_user: appuser
+  hosts:
+    frankfurt:
+      ansible_host: 170.187.185.141
+    amsterdam:
+      ansible_host: 193.149.129.84

@@ -1,0 +1,45 @@
+---
+- name: Install and configure Tailscale as an exit node with no key expiry
+  hosts: tailscale
+  become: true
+  vars:
+    tailscale_authkey: "YOUR_KEY"
+    tailscale_args: "--reset --advertise-exit-node --hostname='{{ inventory_hostname }}'"
+    tailscale_tags:
+      - no-expiary
+
+  tasks:
+    - name: Install Tailscale
+      ansible.builtin.include_role:
+        name: artis3n.tailscale
+
+    - name: Enable IP forwarding
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: '1'
+        sysctl_set: yes
+        state: present
+        reload: yes
+      loop:
+        - net.ipv4.ip_forward
+        - net.ipv6.conf.all.forwarding
+
+    - name: Get Tailscale device ID
+      ansible.builtin.command:
+        cmd: tailscale status --json
+      register: tailscale_status
+      changed_when: false
+
+    - name: Parse Tailscale device ID
+      ansible.builtin.set_fact:
+        tailscale_device_id: "{{ (tailscale_status.stdout | from_json).Self.ID }}"
+
+    - name: Display Tailscale status
+      ansible.builtin.command:
+        cmd: tailscale status
+      register: tailscale_status
+      changed_when: false
+
+    - name: Show Tailscale status
+      ansible.builtin.debug:
+        var: tailscale_status.stdout_lines
